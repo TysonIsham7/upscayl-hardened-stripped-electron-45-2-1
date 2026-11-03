@@ -22,6 +22,7 @@ import getDirectoryFromPath from "../../common/get-directory-from-path";
 import { MODELS } from "../../common/models-list";
 import { getPlatform } from "../utils/get-device-specs";
 import { copyMetadata } from "../utils/copy-metadata";
+import { allowMediaPath } from "../utils/media-allowlist";
 
 const imageUpscayl = async (event, payload: ImageUpscaylPayload) => {
   const mainWindow = getMainWindow();
@@ -31,7 +32,6 @@ const imageUpscayl = async (event, payload: ImageUpscaylPayload) => {
     return;
   }
 
-  // GET VARIABLES
   const tileSize = payload.tileSize;
   const compression = payload.compression;
   const ttaMode = payload.ttaMode;
@@ -43,6 +43,7 @@ const imageUpscayl = async (event, payload: ImageUpscaylPayload) => {
   const saveImageAs = payload.saveImageAs as ImageFormat;
   const overwrite = payload.overwrite as boolean;
   const imagePath = decodePath(payload.imagePath);
+  allowMediaPath(imagePath);
   let inputDir = getDirectoryFromPath(imagePath);
   let outputDir = decodePath(payload.outputPath);
   const fileNameWithExt = getFilenameFromPath(imagePath);
@@ -60,7 +61,6 @@ const imageUpscayl = async (event, payload: ImageUpscaylPayload) => {
 
   const isDefaultModel = model in MODELS;
 
-  // Check if filename is too long
   if (outFile.length >= 255) {
     if (getPlatform() === "win") {
       logit("Filename too long for Windows.");
@@ -76,14 +76,13 @@ const imageUpscayl = async (event, payload: ImageUpscaylPayload) => {
     }
   }
 
-  // UPSCALE
   if (fs.existsSync(outFile) && !overwrite) {
-    // If already upscayled, just output that file
-    logit("✅ Already upscayled at: ", outFile);
+    logit("Already upscayled at: ", outFile);
+    allowMediaPath(outFile);
     mainWindow.webContents.send(ELECTRON_COMMANDS.UPSCAYL_DONE, outFile);
   } else {
     logit(
-      "✅ Upscayl Variables: ",
+      "Upscayl Variables: ",
       JSON.stringify({
         model,
         gpuId,
@@ -154,23 +153,23 @@ const imageUpscayl = async (event, payload: ImageUpscaylPayload) => {
     };
     const onClose = async () => {
       if (!failed && !stopped) {
-        logit("💯 Done upscaling");
-        // Free up memory
+        logit("Done upscaling");
         upscayl.kill();
         mainWindow.setProgressBar(-1);
         if (payload.copyMetadata) {
-          logit("🏷️ Copying metadata...");
+          logit("Copying metadata...");
           try {
             await copyMetadata(imagePath, outFile);
-            logit("✅ Metadata copied to: ", outFile);
+            logit("Metadata copied to: ", outFile);
           } catch (error) {
-            logit("❌ Error copying metadata: ", error);
+            logit("Error copying metadata: ", error);
             mainWindow.webContents.send(
               ELECTRON_COMMANDS.METADATA_ERROR,
               error,
             );
           }
         }
+        allowMediaPath(outFile);
         mainWindow.webContents.send(ELECTRON_COMMANDS.UPSCAYL_DONE, outFile);
         showNotification("Upscayl", "Image upscayled successfully!");
       }

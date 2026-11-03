@@ -23,6 +23,7 @@ import decodePath from "../../common/decode-path";
 import getDirectoryFromPath from "../../common/get-directory-from-path";
 import { MODELS } from "../../common/models-list";
 import { copyMetadata } from "../utils/copy-metadata";
+import { allowMediaPath } from "../utils/media-allowlist";
 
 const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
   const mainWindow = getMainWindow();
@@ -38,14 +39,13 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
   const gpuId = payload.gpuId as string;
   const saveImageAs = payload.saveImageAs as ImageFormat;
   const imagePath = decodePath(payload.imagePath);
+  allowMediaPath(imagePath);
   let inputDir = getDirectoryFromPath(imagePath);
   let outputDir = decodePath(payload.outputPath);
   const fullfileName = getFilenameFromPath(imagePath);
   const fileName = parse(fullfileName).name;
 
   const isDefaultModel = model in MODELS;
-
-  // COPY IMAGE TO TMP FOLDER
 
   const outFile =
     outputDir +
@@ -57,7 +57,6 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
     "." +
     saveImageAs;
 
-  // UPSCALE
   let upscayl = spawnUpscayl(
     getDoubleUpscaleArguments({
       inputDir,
@@ -84,16 +83,13 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
   let failed = false;
   let failed2 = false;
 
-  // SECOND PASS FUNCTIONS
   const onError2 = (data) => {
     if (!mainWindow) return;
     data.toString();
-    // SEND UPSCAYL PROGRESS TO RENDERER
     mainWindow.webContents.send(
       ELECTRON_COMMANDS.DOUBLE_UPSCAYL_PROGRESS,
       data,
     );
-    // SET FAILED TO TRUE
     failed2 = true;
     mainWindow &&
       mainWindow.webContents.send(
@@ -107,14 +103,11 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
 
   const onData2 = (data) => {
     if (!mainWindow) return;
-    // CONVERT DATA TO STRING
     data = data.toString();
-    // SEND UPSCAYL PROGRESS TO RENDERER
     mainWindow.webContents.send(
       ELECTRON_COMMANDS.DOUBLE_UPSCAYL_PROGRESS,
       data,
     );
-    // IF PROGRESS HAS ERROR, UPSCAYL FAILED
     if (data.includes("Error") || data.includes("failed")) {
       upscayl2.kill();
       failed2 = true;
@@ -127,22 +120,23 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
   const onClose2 = async (code) => {
     if (!mainWindow) return;
     if (!failed2 && !stopped) {
-      logit("💯 Done upscaling");
+      logit("Done upscaling");
 
       mainWindow.setProgressBar(-1);
       if (payload.copyMetadata) {
-        logit("🏷️ Copying metadata...");
+        logit("Copying metadata...");
         try {
           await copyMetadata(imagePath, outFile);
-          logit("✅ Metadata copied to: ", outFile);
+          logit("Metadata copied to: ", outFile);
         } catch (error) {
-          logit("❌ Error copying metadata: ", error);
+          logit("Error copying metadata: ", error);
           mainWindow.webContents.send(
             ELECTRON_COMMANDS.METADATA_ERROR,
             error,
           );
         }
       }
+      allowMediaPath(outFile);
       mainWindow.webContents.send(
         ELECTRON_COMMANDS.DOUBLE_UPSCAYL_DONE,
         outFile,
@@ -151,17 +145,14 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
     }
   };
 
-  // FIRST PASS FUNCTIONS
   const onError = (data) => {
     if (!mainWindow) return;
     mainWindow.setProgressBar(-1);
     data.toString();
-    // SEND UPSCAYL PROGRESS TO RENDERER
     mainWindow.webContents.send(
       ELECTRON_COMMANDS.DOUBLE_UPSCAYL_PROGRESS,
       data,
     );
-    // SET FAILED TO TRUE
     failed = true;
     mainWindow &&
       mainWindow.webContents.send(
@@ -175,14 +166,11 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
 
   const onData = (data) => {
     if (!mainWindow) return;
-    // CONVERT DATA TO STRING
     data = data.toString();
-    // SEND UPSCAYL PROGRESS TO RENDERER
     mainWindow.webContents.send(
       ELECTRON_COMMANDS.DOUBLE_UPSCAYL_PROGRESS,
       data,
     );
-    // IF PROGRESS HAS ERROR, UPSCAYL FAILED
     if (data.includes("Error") || data.includes("failed")) {
       upscayl.kill();
       failed = true;
@@ -193,9 +181,7 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
   };
 
   const onClose = (code) => {
-    // IF NOT FAILED
     if (!failed && !stopped) {
-      // SPAWN A SECOND PASS
       upscayl2 = spawnUpscayl(
         getDoubleUpscaleSecondPassArguments({
           outFile,
@@ -213,7 +199,7 @@ const doubleUpscayl = async (event, payload: DoubleUpscaylPayload) => {
         }),
         logit,
       );
-      logit("🚀 Upscaling Second Pass");
+      logit("Upscaling Second Pass");
       childProcesses.push(upscayl2);
       upscayl2.process.stderr.on("data", onData2);
       upscayl2.process.on("error", onError2);
