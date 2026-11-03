@@ -20,7 +20,7 @@
     "hardenedRuntime": true,
     "gatekeeperAssess": false,
     "mergeASARs": false,
-    "minimumSystemVersion": "12.0.0",
+    "minimumSystemVersion": "13.0.0",
     "electronLanguages": ["en"],
     "x64ArchFiles": "*",
     "type": "distribution",

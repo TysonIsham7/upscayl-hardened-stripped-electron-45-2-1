@@ -7,6 +7,13 @@ exports.default = async function notarizing(context) {
     return;
   }
 
+  if (!process.env.APPLEID || !process.env.APPLEIDPASS || !process.env.TEAMID) {
+    console.log(
+      "Skipping notarization; set APPLEID, APPLEIDPASS, and TEAMID to notarize.",
+    );
+    return;
+  }
+
   const appName = context.packager.appInfo.productFilename;
 
   return await notarize({

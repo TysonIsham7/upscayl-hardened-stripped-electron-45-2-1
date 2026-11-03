@@ -39,11 +39,6 @@ export const rememberOutputFolderAtom = atomWithStorage<boolean>(
   false,
 );
 
-export const dontShowCloudModalAtom = atomWithStorage<boolean>(
-  "dontShowCloudModal",
-  false,
-);
-
 export const noImageProcessingAtom = atomWithStorage<boolean>(
   "noImageProcessing",
   false,
@@ -80,11 +75,6 @@ export const tileSizeAtom = atomWithStorage<number | null>("tileSize", null);
 export const showSidebarAtom = atomWithStorage("showSidebar", true);
 
 export const autoUpdateAtom = atomWithStorage("autoUpdate", true);
-
-export const enableContributionAtom = atomWithStorage(
-  "enableContribution",
-  true,
-);
 
 export const userStatsAtom = atomWithStorage("userStats", {
   totalUpscayls: 0,
