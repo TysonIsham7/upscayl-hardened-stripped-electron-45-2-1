@@ -4,7 +4,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   batchModeAtom,
   compressionAtom,
-  dontShowCloudModalAtom,
   noImageProcessingAtom,
   savedOutputPathAtom,
   overwriteAtom,
@@ -32,7 +31,6 @@ import { useToast } from "@/components/ui/use-toast";
 import UpscaylSteps from "./upscayl-tab/upscayl-steps";
 import SettingsTab from "./settings-tab";
 import Footer from "../footer";
-import { NewsModal } from "../news-modal";
 import Tabs from "../tabs";
 import Header from "../header";
 import { ChevronLeftIcon } from "lucide-react";
@@ -67,18 +65,11 @@ const Sidebar = ({
   const logit = useLogger();
   const { toast } = useToast();
   const version = useUpscaylVersion();
-
-  // LOCAL STATES
-  // TODO: Add electron handler for os
   const [selectedModelId, setSelectedModelId] = useAtom(selectedModelIdAtom);
   const [doubleUpscayl, setDoubleUpscayl] = useAtom(doubleUpscaylAtom);
   const [gpuId, setGpuId] = useAtom(gpuIdAtom);
   const [saveImageAs, setSaveImageAs] = useAtom(saveImageAsAtom);
-
   const [selectedTab, setSelectedTab] = useState(0);
-  const [showCloudModal, setShowCloudModal] = useState(false);
-
-  // ATOMIC STATES
   const overwrite = useAtomValue(overwriteAtom);
   const outputPath = useAtomValue(savedOutputPathAtom);
   const [compression, setCompression] = useAtom(compressionAtom);
@@ -86,7 +77,6 @@ const Sidebar = ({
   const [batchMode, setBatchMode] = useAtom(batchModeAtom);
   const logData = useAtomValue(logAtom);
   const [scale] = useAtom(scaleAtom);
-  const setDontShowCloudModal = useSetAtom(dontShowCloudModalAtom);
   const noImageProcessing = useAtomValue(noImageProcessingAtom);
   const customWidth = useAtomValue(customWidthAtom);
   const useCustomWidth = useAtomValue(useCustomWidthAtom);
@@ -97,12 +87,11 @@ const Sidebar = ({
   const [copyMetadata] = useAtom(copyMetadataAtom);
 
   const upscaylHandler = async () => {
-    logit("🔄 Resetting Upscaled Image Path");
+    logit("Resetting Upscaled Image Path");
     setUpscaledImagePath("");
     setUpscaledBatchFolderPath("");
     if (imagePath !== "" || batchFolderPath !== "") {
       setProgress(t("APP.PROGRESS.WAIT_TITLE"));
-      // Double Upscayl
       if (doubleUpscayl) {
         window.electron.send<DoubleUpscaylPayload>(
           ELECTRON_COMMANDS.DOUBLE_UPSCAYL,
@@ -129,9 +118,7 @@ const Sidebar = ({
           doubleUpscayls: prev.doubleUpscayls + 1,
           imageUpscayls: prev.imageUpscayls + 1,
         }));
-        logit("🏁 DOUBLE_UPSCAYL");
       } else if (batchMode) {
-        // Batch Upscayl
         setDoubleUpscayl(false);
         window.electron.send<BatchUpscaylPayload>(
           ELECTRON_COMMANDS.FOLDER_UPSCAYL,
@@ -157,9 +144,7 @@ const Sidebar = ({
           lastUsedAt: new Date().getTime(),
           batchUpscayls: prev.doubleUpscayls + 1,
         }));
-        logit("🏁 FOLDER_UPSCAYL");
       } else {
-        // Single Image Upscayl
         window.electron.send<ImageUpscaylPayload>(ELECTRON_COMMANDS.UPSCAYL, {
           imagePath,
           outputPath,
@@ -182,47 +167,26 @@ const Sidebar = ({
           lastUsedAt: new Date().getTime(),
           imageUpscayls: prev.imageUpscayls + 1,
         }));
-        logit("🏁 UPSCAYL");
       }
     } else {
       toast({
         title: t("ERRORS.NO_IMAGE_ERROR.TITLE"),
         description: t("ERRORS.NO_IMAGE_ERROR.DESCRIPTION"),
       });
-      logit("🚫 No valid image selected");
     }
   };
 
   return (
     <>
-      {/* TOP LOGO WHEN SIDEBAR IS HIDDEN */}
       {!showSidebar && <UpscaylLogo />}
-
-      <SidebarToggleButton
-        showSidebar={showSidebar}
-        setShowSidebar={setShowSidebar}
-      />
-
-      <div
-        className={`relative flex h-screen min-w-[350px] max-w-[350px] flex-col bg-base-100 ${showSidebar ? "" : "hidden"}`}
-      >
-        <button
-          className="absolute -right-0 top-1/2 z-50 -translate-y-1/2 translate-x-1/2 rounded-full bg-base-100 p-4"
-          onClick={() => setShowSidebar((prev) => !prev)}
-        >
+      <SidebarToggleButton showSidebar={showSidebar} setShowSidebar={setShowSidebar} />
+      <div className={`relative flex h-screen min-w-[350px] max-w-[350px] flex-col bg-base-100 ${showSidebar ? "" : "hidden"}`}>
+        <button className="absolute -right-0 top-1/2 z-50 -translate-y-1/2 translate-x-1/2 rounded-full bg-base-100 p-4" onClick={() => setShowSidebar((prev) => !prev)}>
           <ChevronLeftIcon />
         </button>
-
-        {window.electron.platform === "mac" && (
-          <div className="mac-titlebar pt-8"></div>
-        )}
-
+        {window.electron.platform === "mac" && <div className="mac-titlebar pt-8"></div>}
         <Header version={version} />
-
-        <NewsModal />
-
         <Tabs selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
-
         {selectedTab === 0 && (
           <UpscaylSteps
             selectImageHandler={selectImageHandler}
@@ -238,7 +202,6 @@ const Sidebar = ({
             setSaveImageAs={setSaveImageAs}
           />
         )}
-
         {selectedTab === 1 && (
           <SettingsTab
             batchMode={batchMode}
@@ -249,9 +212,6 @@ const Sidebar = ({
             saveImageAs={saveImageAs}
             setSaveImageAs={setSaveImageAs}
             logData={logData}
-            show={showCloudModal}
-            setShow={setShowCloudModal}
-            setDontShowCloudModal={setDontShowCloudModal}
           />
         )}
         <Footer />
