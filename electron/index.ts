@@ -22,14 +22,12 @@ import { registerPrivilegedSchemes } from "./utils/protocols";
 import { getDeviceSpecsFromGpu } from "./utils/get-device-specs";
 import { autoUpdater } from "electron-updater";
 
-// The renderer logger (electron-log/renderer) needs this preload. The script
-// only uses ipcRenderer and contextBridge, which sandboxed preloads still have.
 log.initialize({ preload: true });
 
 registerPrivilegedSchemes();
 
 if (FEATURE_FLAGS.APP_STORE_BUILD) {
-  logit("\ud83d\ude80 APP STORE BUILD ENABLED");
+  logit("APP STORE BUILD ENABLED");
   app.commandLine.appendSwitch("in-process-gpu");
 }
 
@@ -50,25 +48,25 @@ app.whenReady().then(async () => {
   createMainWindow();
 
   log.info(
-    "\ud83c\udd99 Upscayl version:",
+    "Upscayl version:",
     app.getVersion(),
     FEATURE_FLAGS.APP_STORE_BUILD ? "MAC-APP-STORE" : "FOSS",
     "Electron",
     process.versions.electron,
   );
-  log.info("\ud83d\ude80 UPSCAYL EXEC PATH: ", execPath);
-  log.info("\ud83d\ude80 MODELS PATH: ", modelsPath);
+  log.info("UPSCAYL EXEC PATH: ", execPath);
+  log.info("MODELS PATH: ", modelsPath);
 
   let closeAccess;
   const folderBookmarks = await settings.get("folder-bookmarks");
   if (FEATURE_FLAGS.APP_STORE_BUILD && folderBookmarks) {
-    logit("\ud83d\udea8 Folder Bookmarks: ", folderBookmarks);
+    logit("Folder Bookmarks: ", folderBookmarks);
     try {
       closeAccess = app.startAccessingSecurityScopedResource(
         folderBookmarks as string,
       );
     } catch (error) {
-      logit("\ud83d\udcc1 Folder Bookmarks Error: ", error);
+      logit("Folder Bookmarks Error: ", error);
     }
   }
   void closeAccess;
@@ -79,26 +77,17 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.on(ELECTRON_COMMANDS.STOP, stop);
-
 ipcMain.on(ELECTRON_COMMANDS.OPEN_FOLDER, openFolder);
-
 ipcMain.handle(ELECTRON_COMMANDS.SELECT_FOLDER, selectFolder);
-
 ipcMain.handle(ELECTRON_COMMANDS.SELECT_FILE, selectFile);
-
 ipcMain.on(ELECTRON_COMMANDS.GET_MODELS_LIST, getModelsList);
-
 ipcMain.handle(
   ELECTRON_COMMANDS.SELECT_CUSTOM_MODEL_FOLDER,
   customModelsSelect,
 );
-
 ipcMain.on(ELECTRON_COMMANDS.UPSCAYL, imageUpscayl);
-
 ipcMain.on(ELECTRON_COMMANDS.FOLDER_UPSCAYL, batchUpscayl);
-
 ipcMain.on(ELECTRON_COMMANDS.DOUBLE_UPSCAYL, doubleUpscayl);
-
 ipcMain.on(ELECTRON_COMMANDS.PASTE_IMAGE, pasteImage);
 
 ipcMain.handle("get-gpu-info", async () => {
@@ -123,9 +112,8 @@ ipcMain.handle("get-system-info", async () => {
 });
 
 ipcMain.handle("get-app-version", () => {
-  return `${app.getVersion()} ${
-    FEATURE_FLAGS.APP_STORE_BUILD ? "MAC-APP-STORE" : "FOSS"
-  } (Electron ${process.versions.electron})`;
+  const channel = FEATURE_FLAGS.APP_STORE_BUILD ? "MAC-APP-STORE" : "FOSS";
+  return app.getVersion() + " " + channel + " (Electron " + process.versions.electron + ")";
 });
 
 if (FEATURE_FLAGS.ENABLE_AUTO_UPDATE && !FEATURE_FLAGS.APP_STORE_BUILD) {
