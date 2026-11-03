@@ -9,10 +9,7 @@ import {
 } from "../ui/dialog";
 import { cn } from "@/lib/utils";
 import SelectTheme from "@/components/sidebar/settings-tab/select-theme";
-import {
-  autoUpdateAtom,
-  enableContributionAtom,
-} from "@/atoms/user-settings-atom";
+import { autoUpdateAtom } from "@/atoms/user-settings-atom";
 import { useAtom, useAtomValue } from "jotai";
 import useTranslation from "../hooks/use-translation";
 import LanguageSwitcher from "../sidebar/settings-tab/language-switcher";
@@ -34,11 +31,9 @@ type OnboardingStep = {
 
 export function OnboardingDialog() {
   const t = useTranslation();
-
   const [currentStep, setCurrentStep] = useState(0);
   const [settings, setSettings] = useState<Record<string, any>>({});
   const locale = useAtomValue(localeAtom);
-
   const [open, setOpen] = useState(false);
 
   const onboardingSteps: OnboardingStep[] = useMemo(
@@ -65,12 +60,6 @@ export function OnboardingDialog() {
             type: "switch",
             label: t("SETTINGS.AUTO_UPDATE.TITLE"),
             key: "autoUpdate",
-          },
-          {
-            type: "switch",
-            label: t("SETTINGS.ENABLE_CONTRIBUTION.TITLE"),
-            description: t("SETTINGS.ENABLE_CONTRIBUTION.DESCRIPTION"),
-            key: "improveUpscayl",
           },
           {
             type: "component",
@@ -106,9 +95,6 @@ export function OnboardingDialog() {
   const isLastStep = currentStep === onboardingSteps.length - 1;
   const isFirstStep = currentStep === 0;
   const [autoUpdate, setAutoUpdate] = useAtom(autoUpdateAtom);
-  const [enableContribution, setEnableContribution] = useAtom(
-    enableContributionAtom,
-  );
 
   useEffect(() => {
     const storedValue = localStorage.getItem("showOnboarding");
@@ -133,22 +119,14 @@ export function OnboardingDialog() {
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(e) => {
-        setOpen(e);
-      }}
-    >
+    <Dialog open={open} onOpenChange={(e) => setOpen(e)}>
       <DialogContent className="flex h-[80%] w-full max-w-[80%] flex-col items-center justify-center">
         <DialogHeader>
-          <DialogTitle className="text-center text-4xl">
-            {currentStepData.title}
-          </DialogTitle>
+          <DialogTitle className="text-center text-4xl">{currentStepData.title}</DialogTitle>
           <DialogDescription className="text-center text-lg text-base-content/70">
             {currentStepData.description}
           </DialogDescription>
         </DialogHeader>
-
         {currentStepData.configurationOptions && (
           <div
             className={cn(
@@ -159,21 +137,9 @@ export function OnboardingDialog() {
             )}
           >
             {currentStepData.configurationOptions.map((option) => (
-              <div
-                key={option.key}
-                className="flex h-full w-full items-center justify-between gap-4"
-                data-tooltip-id="tooltip"
-                data-tooltip-content={
-                  option.key === "improveUpscayl"
-                    ? t("SETTINGS.ENABLE_CONTRIBUTION.DESCRIPTION")
-                    : null
-                }
-              >
+              <div key={option.key} className="flex h-full w-full items-center justify-between gap-4">
                 {option.label && (
-                  <label
-                    htmlFor={option.key}
-                    className="text-nowrap text-left text-sm uppercase text-primary-content"
-                  >
+                  <label htmlFor={option.key} className="text-nowrap text-left text-sm uppercase text-primary-content">
                     {option.label}
                   </label>
                 )}
@@ -182,19 +148,9 @@ export function OnboardingDialog() {
                     type="checkbox"
                     className="toggle"
                     id={option.key}
-                    checked={
-                      option.key === "autoUpdate"
-                        ? autoUpdate
-                        : option.key === "improveUpscayl"
-                          ? enableContribution
-                          : false
-                    }
+                    checked={option.key === "autoUpdate" ? autoUpdate : false}
                     onChange={(e) => {
-                      if (option.key === "autoUpdate") {
-                        setAutoUpdate(e.target.checked);
-                      } else if (option.key === "improveUpscayl") {
-                        setEnableContribution(e.target.checked);
-                      }
+                      if (option.key === "autoUpdate") setAutoUpdate(e.target.checked);
                     }}
                   />
                 )}
@@ -203,9 +159,7 @@ export function OnboardingDialog() {
                     className="input input-bordered"
                     id={option.key}
                     value={settings[option.key] || ""}
-                    onChange={(e) =>
-                      handleSettingChange(option.key, e.target.value)
-                    }
+                    onChange={(e) => handleSettingChange(option.key, e.target.value)}
                   />
                 )}
                 {option.type === "video" && (
@@ -222,20 +176,11 @@ export function OnboardingDialog() {
                 {option.type === "component" && option.component}
               </div>
             ))}
-            {currentStepData.type === "settings" && (
-              <p className="text-sm text-base-content/70">
-                {t("ONBOARDING_DIALOG.SETTINGS_NOTE")}
-              </p>
-            )}
           </div>
         )}
-
         <DialogFooter className="gap-2 md:gap-0">
           {!isFirstStep && (
-            <button
-              onClick={() => setCurrentStep((prev) => prev - 1)}
-              className="btn btn-primary w-40"
-            >
+            <button onClick={() => setCurrentStep((prev) => prev - 1)} className="btn btn-primary w-40">
               {t("ONBOARDING_DIALOG.BACK_BUTTON_TITLE")}
             </button>
           )}
