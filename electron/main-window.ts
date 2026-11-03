@@ -18,7 +18,11 @@ const allowedNavigation = (url: string): boolean => {
   } catch {
     return false;
   }
-  if (parsed.protocol === "file:" || parsed.protocol === "public:") {
+  if (
+    parsed.protocol === "file:" ||
+    parsed.protocol === "public:" ||
+    parsed.protocol === "media:"
+  ) {
     return true;
   }
   if (
@@ -32,6 +36,9 @@ const allowedNavigation = (url: string): boolean => {
 };
 
 const createMainWindow = () => {
+  console.log("DIRNAME", __dirname);
+  console.log("App Path: ", app.getAppPath());
+
   mainWindow = new BrowserWindow({
     icon: join(__dirname, "../build/icon.png"),
     width: 1300,
@@ -47,7 +54,7 @@ const createMainWindow = () => {
       nodeIntegrationInWorker: false,
       nodeIntegrationInSubFrames: false,
       sandbox: true,
-      webSecurity: false,
+      webSecurity: true,
       allowRunningInsecureContent: false,
     },
     titleBarStyle: getPlatform() === "mac" ? "hiddenInset" : "default",
