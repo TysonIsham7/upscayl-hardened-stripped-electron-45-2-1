@@ -13,6 +13,7 @@ import {
 } from "../../atoms/user-settings-atom";
 import { useToast } from "@/components/ui/use-toast";
 import { sanitizePath } from "@common/sanitize-path";
+import { bytesToBase64 } from "@common/bytes-to-base64";
 import getDirectoryFromPath from "@common/get-directory-from-path";
 import { FEATURE_FLAGS } from "@common/feature-flags";
 import { ImageFormat, VALID_IMAGE_FORMATS } from "@/lib/valid-formats";
@@ -93,7 +94,6 @@ const MainContent = ({
     upscaledBatchFolderPath,
   ]);
 
-  // DRAG AND DROP HANDLERS
   const handleDragEnter = (e) => {
     e.preventDefault();
     console.log("drag enter");
@@ -109,7 +109,7 @@ const MainContent = ({
 
   const openFolderHandler = (e) => {
     const logit = useLogger();
-    logit("📂 OPEN_FOLDER: ", upscaledBatchFolderPath);
+    logit("OPEN_FOLDER: ", upscaledBatchFolderPath);
     window.electron.send(
       ELECTRON_COMMANDS.OPEN_FOLDER,
       upscaledBatchFolderPath,
@@ -128,7 +128,7 @@ const MainContent = ({
       e.dataTransfer.items.length === 0 ||
       e.dataTransfer.files.length === 0
     ) {
-      logit("👎 No valid files dropped");
+      logit("No valid files dropped");
       toast({
         title: t("ERRORS.INVALID_IMAGE_ERROR.TITLE"),
         description: t("ERRORS.INVALID_IMAGE_ERROR.ADDITIONAL_DESCRIPTION"),
@@ -136,23 +136,31 @@ const MainContent = ({
       return;
     }
     const type = e.dataTransfer.items[0].type;
-    const filePath = e.dataTransfer.files[0].path;
-    const extension = e.dataTransfer.files[0].name.split(".").at(-1);
-    logit("⤵️ Dropped file: ", JSON.stringify({ type, filePath, extension }));
+    const droppedFile = e.dataTransfer.files[0];
+    let filePath = "";
+    try {
+      filePath = window.electron.resolveDroppedFile(droppedFile);
+    } catch (error) {
+      logit("Could not read the dropped file path", error);
+    }
+    const extension = droppedFile.name.split(".").at(-1);
+    logit("Dropped file: ", JSON.stringify({ type, filePath, extension }));
     if (
+      !filePath ||
       !type.includes("image") ||
+      !extension ||
       !VALID_IMAGE_FORMATS.includes(extension.toLowerCase())
     ) {
-      logit("🚫 Invalid file dropped");
+      logit("Invalid file dropped");
       toast({
         title: t("ERRORS.INVALID_IMAGE_ERROR.TITLE"),
         description: t("ERRORS.INVALID_IMAGE_ERROR.ADDITIONAL_DESCRIPTION"),
       });
     } else {
-      logit("🖼 Setting image path: ", filePath);
+      logit("Setting image path: ", filePath);
       setImagePath(filePath);
       const dirname = getDirectoryFromPath(filePath);
-      logit("🗂 Setting output path: ", dirname);
+      logit("Setting output path: ", dirname);
       if (!FEATURE_FLAGS.APP_STORE_BUILD) {
         if (!rememberOutputFolder) {
           setOutputPath(dirname);
@@ -181,7 +189,7 @@ const MainContent = ({
         };
 
         logit(
-          "📋 Pasted file: ",
+          "Pasted file: ",
           JSON.stringify({
             name: file.name,
             path: file.path,
@@ -197,15 +205,13 @@ const MainContent = ({
           reader.onload = async (event) => {
             const result = event.target?.result;
             if (typeof result === "string") {
-              file.encodedBuffer = Buffer.from(result, "utf-8").toString(
-                "base64",
+              file.encodedBuffer = bytesToBase64(
+                new TextEncoder().encode(result),
               );
             } else if (result instanceof ArrayBuffer) {
-              file.encodedBuffer = Buffer.from(new Uint8Array(result)).toString(
-                "base64",
-              );
+              file.encodedBuffer = bytesToBase64(new Uint8Array(result));
             } else {
-              logit("🚫 Invalid file pasted");
+              logit("Invalid file pasted");
               toast({
                 title: t("ERRORS.INVALID_IMAGE_ERROR.TITLE"),
                 description: t(
@@ -217,14 +223,14 @@ const MainContent = ({
           };
           reader.readAsArrayBuffer(fileObject);
         } else {
-          logit("🚫 Invalid file pasted");
+          logit("Invalid file pasted");
           toast({
             title: t("ERRORS.INVALID_IMAGE_ERROR.TITLE"),
             description: t("ERRORS.INVALID_IMAGE_ERROR.CLIPBOARD_DESCRIPTION"),
           });
         }
       } else {
-        logit("🚫 Invalid file pasted");
+        logit("Invalid file pasted");
         toast({
           title: t("ERRORS.INVALID_IMAGE_ERROR.TITLE"),
           description: t("ERRORS.INVALID_IMAGE_ERROR.CLIPBOARD_DESCRIPTION"),
@@ -239,7 +245,6 @@ const MainContent = ({
   };
 
   useEffect(() => {
-    // Events
     const handlePasteEvent = (e) => handlePaste(e);
     const handlePasteImageSaveSuccess = (_: any, imageFilePath: string) => {
       setImagePath(imageFilePath);
@@ -287,7 +292,6 @@ const MainContent = ({
           />
         )}
 
-      {/* DEFAULT PANE INFO */}
       {showInformationCard && (
         <InstructionsCard version={version} batchMode={batchMode} />
       )}
@@ -298,12 +302,10 @@ const MainContent = ({
         resetImagePaths={resetImagePaths}
       />
 
-      {/* SHOW SELECTED IMAGE */}
       {!batchMode && upscaledImagePath.length === 0 && imagePath.length > 0 && (
         <ImageViewer imagePath={imagePath} setDimensions={setDimensions} />
       )}
 
-      {/* BATCH UPSCALE SHOW SELECTED FOLDER */}
       {batchMode &&
         upscaledBatchFolderPath.length === 0 &&
         batchFolderPath.length > 0 && (
@@ -314,7 +316,6 @@ const MainContent = ({
             {batchFolderPath}
           </p>
         )}
-      {/* BATCH UPSCALE DONE INFO */}
 
       {batchMode && upscaledBatchFolderPath.length > 0 && (
         <div className="z-50 flex flex-col items-center">
@@ -337,7 +338,6 @@ const MainContent = ({
         />
       )}
 
-      {/* COMPARISON SLIDER */}
       {!batchMode &&
         viewType === "slider" &&
         imagePath.length > 0 &&
