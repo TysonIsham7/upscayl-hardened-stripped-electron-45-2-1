@@ -1,20 +1,60 @@
-import { ipcRenderer, contextBridge } from "electron";
-import {
-  getAppVersion,
-  getDeviceSpecs,
-  getPlatform,
-} from "./utils/get-device-specs";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
-// 'ipcRenderer' will be available in index.js with the method 'window.electron'
+// Sandboxed preloads cannot require sibling files. Keep this inlined.
+function getPlatform(): "linux" | "mac" | "win" {
+  switch (process.platform) {
+    case "darwin":
+    case "sunos":
+      return "mac";
+    case "win32":
+      return "win";
+    default:
+      return "linux";
+  }
+}
+
+type RendererListener = (...args: any[]) => any;
+type IpcWrapper = (event: Electron.IpcRendererEvent, args: unknown) => void;
+
+const wrappers = new Map<string, Map<RendererListener, IpcWrapper>>();
+
+function subscribe(command: string, func: RendererListener): void {
+  let byFunc = wrappers.get(command);
+  if (!byFunc) {
+    byFunc = new Map();
+    wrappers.set(command, byFunc);
+  }
+  const previous = byFunc.get(func);
+  if (previous) ipcRenderer.removeListener(command, previous);
+  const wrapper: IpcWrapper = (event, args) => {
+    func(event, args);
+  };
+  byFunc.set(func, wrapper);
+  ipcRenderer.on(command, wrapper);
+}
+
+function unsubscribe(command: string, func: RendererListener): void {
+  const byFunc = wrappers.get(command);
+  const wrapper = byFunc?.get(func);
+  if (!wrapper || !byFunc) return;
+  ipcRenderer.removeListener(command, wrapper);
+  byFunc.delete(func);
+}
+
 contextBridge.exposeInMainWorld("electron", {
-  send: (command: string, payload: any) => ipcRenderer.send(command, payload),
-  on: (command: string, func: (...args: any) => any) =>
-    ipcRenderer.on(command, (event, args) => {
-      func(event, args);
-    }),
-  invoke: (command: string, payload: any) =>
+  send: (command: string, payload?: unknown) => {
+    ipcRenderer.send(command, payload);
+  },
+  on: (command: string, func: RendererListener) => {
+    subscribe(command, func);
+  },
+  off: (command: string, func: RendererListener) => {
+    unsubscribe(command, func);
+  },
+  invoke: (command: string, payload?: unknown) =>
     ipcRenderer.invoke(command, payload),
   platform: getPlatform(),
-  getSystemInfo: async () => await getDeviceSpecs(),
-  getAppVersion: async () => await getAppVersion(),
+  getSystemInfo: () => ipcRenderer.invoke("get-system-info"),
+  getAppVersion: () => ipcRenderer.invoke("get-app-version"),
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
 });
