@@ -1,8 +1,11 @@
-import { net, protocol } from "electron";
+import { protocol } from "electron";
 import fs from "fs";
 import path from "path";
-import { pathToFileURL } from "url";
 import electronIsDev from "electron-is-dev";
+import {
+  filesystemPathFromMediaUrl,
+  isAllowedMediaPath,
+} from "./media-allowlist";
 
 const ASSET_PREFIXES = ["/_next", "/static"];
 
@@ -12,6 +15,7 @@ const MIME_TYPES: Record<string, string> = {
   ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json",
+  ".map": "application/json",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -23,13 +27,26 @@ const MIME_TYPES: Record<string, string> = {
   ".woff2": "font/woff2",
   ".ttf": "font/ttf",
   ".txt": "text/plain; charset=utf-8",
+  ".xml": "application/xml",
   ".wasm": "application/wasm",
+  ".avif": "image/avif",
 };
 
 export function registerPrivilegedSchemes(): void {
   protocol.registerSchemesAsPrivileged([
     {
       scheme: "public",
+      privileges: {
+        standard: false,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: true,
+        stream: true,
+        bypassCSP: true,
+      },
+    },
+    {
+      scheme: "media",
       privileges: {
         standard: false,
         secure: true,
@@ -66,6 +83,11 @@ function pathnameFromFileUrl(requestUrl: string): string | null {
   return pathname;
 }
 
+/**
+ * Next's static export references /_next and /static from the site root.
+ * Only those paths, and other files inside the renderer out directory, are
+ * served. Image previews use the media:// allowlist instead.
+ */
 export function resolveFileProtocolPath(
   requestUrl: string,
   outDir: string,
@@ -74,7 +96,7 @@ export function resolveFileProtocolPath(
   if (!pathname) return null;
   const normalized = pathname.replace(/\\/g, "/");
   for (const prefix of ASSET_PREFIXES) {
-    if (normalized === prefix || normalized.startsWith(prefix + "/")) {
+    if (normalized === prefix || normalized.startsWith(`${prefix}/`)) {
       const relative = normalized.replace(/^\/+/, "");
       const resolved = path.resolve(outDir, relative);
       if (!isInside(outDir, resolved)) return null;
@@ -98,12 +120,6 @@ async function readFileResponse(filePath: string): Promise<Response> {
   }
 }
 
-function fetchNativeFile(filePath: string): Promise<Response> {
-  return net.fetch(pathToFileURL(filePath).toString(), {
-    bypassCustomProtocolHandlers: true,
-  });
-}
-
 export function installProtocolHandlers(rendererDir: string): void {
   const outDir = path.join(rendererDir, "out");
   const publicDir = electronIsDev
@@ -119,11 +135,17 @@ export function installProtocolHandlers(rendererDir: string): void {
       if (isInside(outDir, resolved)) {
         return readFileResponse(resolved);
       }
-      return fetchNativeFile(resolved).catch(() => {
-        return new Response("Not found", { status: 404 });
-      });
+      return new Response("Forbidden", { status: 403 });
     });
   }
+
+  protocol.handle("media", (request) => {
+    const filePath = filesystemPathFromMediaUrl(request.url);
+    if (!filePath || !isAllowedMediaPath(filePath)) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    return readFileResponse(filePath);
+  });
 
   protocol.handle("public", (request) => {
     const withoutScheme = request.url.replace(/^public:\/\//i, "");

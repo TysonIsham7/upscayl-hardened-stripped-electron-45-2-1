@@ -20,8 +20,27 @@ import pasteImage from "./commands/paste-image";
 import { prepareRenderer } from "./utils/prepare-renderer";
 import { registerPrivilegedSchemes } from "./utils/protocols";
 import { getDeviceSpecsFromGpu } from "./utils/get-device-specs";
+import { allowMediaPath } from "./utils/media-allowlist";
 import { autoUpdater } from "electron-updater";
 
+let mediaAllowToken: string | null = null;
+ipcMain.on("media-register-token", (_event, token: unknown) => {
+  if (mediaAllowToken) return;
+  if (typeof token === "string" && token.length >= 8) mediaAllowToken = token;
+});
+ipcMain.on(
+  "media-allow-dropped",
+  (_event, payload: { token?: unknown; filePath?: unknown }) => {
+    if (!mediaAllowToken || !payload || payload.token !== mediaAllowToken) {
+      return;
+    }
+    if (typeof payload.filePath !== "string") return;
+    allowMediaPath(payload.filePath);
+  },
+);
+
+// The renderer logger (electron-log/renderer) needs this preload. The script
+// only uses ipcRenderer and contextBridge, which sandboxed preloads still have.
 log.initialize({ preload: true });
 
 registerPrivilegedSchemes();
@@ -113,7 +132,14 @@ ipcMain.handle("get-system-info", async () => {
 
 ipcMain.handle("get-app-version", () => {
   const channel = FEATURE_FLAGS.APP_STORE_BUILD ? "MAC-APP-STORE" : "FOSS";
-  return app.getVersion() + " " + channel + " (Electron " + process.versions.electron + ")";
+  return (
+    app.getVersion() +
+    " " +
+    channel +
+    " (Electron " +
+    process.versions.electron +
+    ")"
+  );
 });
 
 if (FEATURE_FLAGS.ENABLE_AUTO_UPDATE && !FEATURE_FLAGS.APP_STORE_BUILD) {

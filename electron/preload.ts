@@ -41,6 +41,16 @@ function unsubscribe(command: string, func: RendererListener): void {
   byFunc.delete(func);
 }
 
+const mediaToken = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+ipcRenderer.send("media-register-token", mediaToken);
+
+function resolveDroppedFile(file: File): string {
+  const filePath = webUtils.getPathForFile(file);
+  if (!filePath) return "";
+  ipcRenderer.send("media-allow-dropped", { token: mediaToken, filePath });
+  return filePath;
+}
+
 contextBridge.exposeInMainWorld("electron", {
   send: (command: string, payload?: unknown) => {
     ipcRenderer.send(command, payload);
@@ -57,4 +67,5 @@ contextBridge.exposeInMainWorld("electron", {
   getSystemInfo: () => ipcRenderer.invoke("get-system-info"),
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
+  resolveDroppedFile,
 });
