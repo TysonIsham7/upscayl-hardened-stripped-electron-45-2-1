@@ -5,6 +5,7 @@ import path from "path";
 import { ELECTRON_COMMANDS } from "../../common/electron-commands";
 import { ImageFormat } from "../types/types";
 import { imageFormats } from "../../common/image-formats";
+import { allowMediaPath } from "../utils/media-allowlist";
 
 interface IClipboardFileParameters {
   name: string;
@@ -39,6 +40,7 @@ const pasteImage = async (
   if (isImageFormatValid(file.extension)) {
     try {
       const imageFilePath = await createTempFileFromClipboard(file);
+      allowMediaPath(imageFilePath);
       mainWindow.webContents.send(
         ELECTRON_COMMANDS.PASTE_IMAGE_SAVE_SUCCESS,
         imageFilePath,

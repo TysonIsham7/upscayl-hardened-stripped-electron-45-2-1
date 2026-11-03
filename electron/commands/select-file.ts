@@ -4,6 +4,7 @@ import { savedImagePath, setSavedImagePath } from "../utils/config-variables";
 import logit from "../utils/logit";
 import settings from "electron-settings";
 import { FEATURE_FLAGS } from "../../common/feature-flags";
+import { allowMediaPath } from "../utils/media-allowlist";
 
 const selectFile = async () => {
   const mainWindow = getMainWindow();
@@ -34,20 +35,18 @@ const selectFile = async () => {
   });
 
   if (FEATURE_FLAGS.APP_STORE_BUILD && bookmarks && bookmarks.length > 0) {
-    console.log("🚨 Setting Bookmark: ", bookmarks);
+    console.log("Setting Bookmark: ", bookmarks);
     settings.set("file-bookmarks", bookmarks[0]);
   }
 
   if (canceled) {
-    logit("🚫 File Operation Cancelled");
+    logit("File Operation Cancelled");
     return null;
   } else {
     setSavedImagePath(filePaths[0]);
 
     let isValid = false;
-    // READ SELECTED FILES
     filePaths.forEach((file) => {
-      // log.log("Files in Folder: ", file);
       if (
         file.endsWith(".png") ||
         file.endsWith(".jpg") ||
@@ -65,7 +64,7 @@ const selectFile = async () => {
     });
 
     if (!isValid) {
-      logit("❌ Invalid File Detected");
+      logit("Invalid File Detected");
       const options: MessageBoxOptions = {
         type: "error",
         title: "Invalid File",
@@ -77,8 +76,8 @@ const selectFile = async () => {
       return null;
     }
 
-    logit("📄 Selected File Path: ", filePaths[0]);
-    // CREATE input AND upscaled FOLDER
+    logit("Selected File Path: ", filePaths[0]);
+    allowMediaPath(filePaths[0]);
     return filePaths[0];
   }
 };

@@ -11,8 +11,8 @@ const LensViewer = ({
   const originalImageRef = useRef<HTMLImageElement>(null);
 
   const [hoverPosition, setHoverPosition] = useState({
-    relativeMouseX: 0, // To show the lens horizontally within the image
-    mouseY: 0, // To show the lens vertically in the viewport
+    relativeMouseX: 0,
+    mouseY: 0,
     relativeMouseXPercent: 0,
     relativeMouseYPercent: 0,
     originalImageMouseX: 0,
@@ -26,29 +26,24 @@ const LensViewer = ({
     const containerRect =
       originalImageContainerRef.current.getBoundingClientRect();
 
-    // Image w-h is actually equal to container w-h, even in object-fit: contain
     let viewportImageWidth = originalImageRef.current.width;
     let viewportImageHeight = originalImageRef.current.height;
     let imageTop = 0;
     const mouseX = e.clientX;
     const mouseY = e.clientY;
     const containerHeight = containerRect.height;
-    const containerLeft = containerRect.left; // Since sidebar pushes the container to the right
+    const containerLeft = containerRect.left;
     const containerTop = containerRect.top;
 
-    // Image is width-constrained
     const originalImageAspectRatio =
       originalImageRef.current.naturalWidth /
       originalImageRef.current.naturalHeight;
     viewportImageHeight = viewportImageWidth / originalImageAspectRatio;
-    // Divide by 2 because image is centered
     imageTop = (containerHeight - viewportImageHeight) / 2;
 
-    // Find relative mouse position within the image
     const relativeMouseX = mouseX - containerLeft;
     const relativeMouseY = mouseY - imageTop;
 
-    // Check if the mouse is within the actual image boundaries
     const isWithinImage =
       relativeMouseX >= 0 &&
       relativeMouseX <= viewportImageWidth &&
@@ -56,7 +51,6 @@ const LensViewer = ({
       relativeMouseY <= viewportImageHeight;
 
     if (!isWithinImage) {
-      // Hide the lens if the mouse is outside the image
       setHoverPosition({
         relativeMouseXPercent: -1000,
         relativeMouseYPercent: -1000,
@@ -68,11 +62,9 @@ const LensViewer = ({
       return;
     }
 
-    // Find image-relative mouse position as percentage
     const relativeMouseXPercent = (relativeMouseX / viewportImageWidth) * 100;
     const relativeMouseYPercent = (relativeMouseY / viewportImageHeight) * 100;
 
-    // Find the pixel position within the image relative to the original image
     const bgPosX =
       (relativeMouseX / viewportImageWidth) *
       originalImageRef.current.naturalWidth;
@@ -91,17 +83,16 @@ const LensViewer = ({
   };
 
   const originalImage = useMemo(
-    () => "file:///" + sanitizedImagePath,
+    () => "media:///" + sanitizedImagePath,
     [sanitizedImagePath],
   );
   const upscaledImage = useMemo(
-    () => "file:///" + sanitizedUpscaledImagePath,
+    () => "media:///" + sanitizedUpscaledImagePath,
     [sanitizedUpscaledImagePath],
   );
 
   return (
     <div className="group relative flex h-full flex-col items-center">
-      {/* Main image container */}
       <div
         className="relative h-full w-full cursor-crosshair"
         ref={originalImageContainerRef}
@@ -114,7 +105,6 @@ const LensViewer = ({
           onMouseMove={handleMouseMove}
           ref={originalImageRef}
         />
-        {/* Lens */}
         <div
           className="pointer-events-none absolute hidden cursor-cell border border-primary bg-black/10 group-hover:block"
           style={{
@@ -127,7 +117,6 @@ const LensViewer = ({
         />
       </div>
 
-      {/* Enlarged views for original and upscaled images */}
       <div
         className="pointer-events-none absolute hidden group-hover:flex"
         style={{
@@ -136,7 +125,6 @@ const LensViewer = ({
           transform: "translate(-50%, 0)",
         }}
       >
-        {/* ORIGINAL IMAGE */}
         <div
           className="relative h-48 w-48 border border-gray-300 bg-cover bg-no-repeat"
           style={{
@@ -149,7 +137,6 @@ const LensViewer = ({
             Original
           </span>
         </div>
-        {/* UPSCALED IMAGE */}
         <div
           className="relative h-48 w-48 border border-gray-300 bg-cover bg-no-repeat"
           style={{

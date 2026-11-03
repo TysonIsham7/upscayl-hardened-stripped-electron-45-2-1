@@ -14,6 +14,7 @@ export interface IElectronAPI {
   }>;
   getAppVersion: () => Promise<string>;
   getPathForFile: (file: File) => string;
+  resolveDroppedFile: (file: File) => string;
 }
 
 declare global {
