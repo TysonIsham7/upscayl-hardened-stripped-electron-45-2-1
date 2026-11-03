@@ -12,7 +12,7 @@ const MyApp = ({ Component, pageProps }: AppProps) => {
       <Head>
         <title>Upscayl</title>
       </Head>
-      <base href="./">
+      <base href="./" />
 
       <Provider>
         <Component {...pageProps} data-theme="upscayl" />
